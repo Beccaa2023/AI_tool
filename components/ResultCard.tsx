@@ -22,11 +22,17 @@ const ResultCard: React.FC<Props> = ({ result, onSave, isSaved, nativeLangName, 
   const handlePlayAudio = async (text: string, id: string) => {
     if (isPlaying) return;
     setIsPlaying(id);
-    const base64 = await generateSpeech(text);
-    if (base64) {
-      await playAudioData(base64);
+    // Add visual feedback immediately
+    try {
+      const base64 = await generateSpeech(text);
+      if (base64) {
+        await playAudioData(base64);
+      }
+    } catch (e) {
+      console.error("Audio playback error", e);
+    } finally {
+      setIsPlaying(null);
     }
-    setIsPlaying(null);
   };
 
   const handleChatSubmit = async (e: React.FormEvent) => {
@@ -84,7 +90,7 @@ const ResultCard: React.FC<Props> = ({ result, onSave, isSaved, nativeLangName, 
             <button 
               onClick={() => handlePlayAudio(result.word, 'main')}
               disabled={!!isPlaying}
-              className={`p-3 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition ${isPlaying === 'main' ? 'animate-pulse' : ''}`}
+              className={`p-3 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition ${isPlaying === 'main' ? 'animate-pulse ring-2 ring-indigo-400' : ''}`}
             >
               <Play fill="currentColor" size={24} />
             </button>
@@ -110,14 +116,14 @@ const ResultCard: React.FC<Props> = ({ result, onSave, isSaved, nativeLangName, 
                 </div>
                 <div className="flex flex-col gap-2">
                    <div className="text-sm text-indigo-600 font-semibold mb-1">
-                      Infinitive: <span className="text-indigo-900">{result.conjugations.infinitive}</span>
+                      Infinitive: <span className="text-indigo-900 bg-white px-2 py-0.5 rounded shadow-sm ml-2">{result.conjugations.infinitive}</span>
                    </div>
                    <div className="text-xs text-indigo-400 uppercase font-bold mb-2">
                       {result.conjugations.tenseName}
                    </div>
                    <div className="grid grid-cols-2 gap-2">
                       {result.conjugations.forms?.map((c, i) => (
-                         <div key={i} className="bg-white p-2 rounded-lg text-sm shadow-sm flex items-center justify-between">
+                         <div key={i} className="bg-white p-2 rounded-lg text-sm shadow-sm flex items-center justify-between border border-indigo-100/50">
                             <span className="text-slate-400 font-medium text-xs">{c.pronoun}</span>
                             <span className="text-indigo-900 font-bold">{c.form}</span>
                          </div>
@@ -131,15 +137,16 @@ const ResultCard: React.FC<Props> = ({ result, onSave, isSaved, nativeLangName, 
           <div className="space-y-4 mb-8">
             <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Examples</h3>
             {result.examples.map((ex, idx) => (
-              <div key={idx} className="group bg-slate-50 p-4 rounded-xl border border-slate-100 hover:border-indigo-100 transition">
+              <div key={idx} className="group bg-slate-50 p-4 rounded-xl border border-slate-100 hover:border-indigo-100 transition relative">
                 <div className="flex justify-between items-start gap-3">
-                  <div>
+                  <div className="flex-1">
                     <p className="text-lg text-slate-800 font-medium mb-1">{ex.original}</p>
                     <p className="text-slate-500 text-sm">{ex.translated}</p>
                   </div>
                   <button 
                     onClick={() => handlePlayAudio(ex.original, `ex-${idx}`)}
-                    className="opacity-50 group-hover:opacity-100 p-2 rounded-full bg-white shadow-sm text-indigo-500"
+                    disabled={!!isPlaying}
+                    className={`p-2 rounded-full shadow-sm text-indigo-500 transition-all ${isPlaying === `ex-${idx}` ? 'bg-indigo-100 animate-pulse' : 'bg-white opacity-60 group-hover:opacity-100'}`}
                   >
                     <Play size={16} fill="currentColor" />
                   </button>

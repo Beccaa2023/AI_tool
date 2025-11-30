@@ -6,7 +6,7 @@ import ResultCard from './components/ResultCard';
 import NotebookView from './components/NotebookView';
 import FlashcardMode from './components/FlashcardMode';
 import { lookupWord, generateConceptImage } from './services/geminiService';
-import { Search, Book, Layers, ArrowLeft, Loader2 } from 'lucide-react';
+import { Search, Book, Layers, ArrowLeft, Loader2, Settings2 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [hasStarted, setHasStarted] = useState(false);
@@ -37,7 +37,11 @@ const App: React.FC = () => {
 
     try {
       // Parallelize definition and image generation
-      const textPromise = lookupWord(query, nativeLang.name, targetLang.name);
+      // Capture current languages at start of request
+      const reqNative = nativeLang.name;
+      const reqTarget = targetLang.name;
+
+      const textPromise = lookupWord(query, reqNative, reqTarget);
       const imagePromise = generateConceptImage(query);
 
       const [textData, imageUrl] = await Promise.all([textPromise, imagePromise]);
@@ -45,7 +49,9 @@ const App: React.FC = () => {
       setCurrentResult({
         ...textData,
         imageUrl,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        sourceLang: reqNative,
+        targetLang: reqTarget
       });
     } catch (error) {
       console.error("Search failed", error);
@@ -94,24 +100,47 @@ const App: React.FC = () => {
             <span className="font-bold text-slate-800 hidden sm:block display-font cursor-pointer">LingoPop</span>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-100 rounded-full px-3 py-1 text-xs font-bold text-slate-600">
-            <span>{nativeLang.flag}</span>
-            <span className="text-slate-400">→</span>
-            <span>{targetLang.flag}</span>
+          {/* Language Switcher */}
+          <div className="flex items-center gap-1 sm:gap-2 bg-slate-100 rounded-full px-2 py-1 border border-slate-200 shadow-inner">
+            <select
+              value={nativeLang.code}
+              onChange={(e) => setNativeLang(LANGUAGES.find(l => l.code === e.target.value) || LANGUAGES[0])}
+              className="bg-transparent text-xs sm:text-sm font-bold text-slate-700 focus:outline-none cursor-pointer py-1 pl-1 appearance-none hover:text-indigo-600 transition-colors text-center"
+              title="Native Language"
+            >
+              {LANGUAGES.map(l => (
+                <option key={l.code} value={l.code}>{l.flag} {l.name}</option>
+              ))}
+            </select>
+            
+            <span className="text-slate-300 text-xs">→</span>
+            
+            <select
+              value={targetLang.code}
+              onChange={(e) => setTargetLang(LANGUAGES.find(l => l.code === e.target.value) || LANGUAGES[1])}
+              className="bg-transparent text-xs sm:text-sm font-bold text-slate-700 focus:outline-none cursor-pointer py-1 pr-1 appearance-none hover:text-indigo-600 transition-colors text-center"
+              title="Target Language"
+            >
+              {LANGUAGES.map(l => (
+                <option key={l.code} value={l.code}>{l.flag} {l.name}</option>
+              ))}
+            </select>
           </div>
 
           <div className="flex gap-2">
             <button 
               onClick={() => setMode(AppMode.NOTEBOOK)}
               className={`p-2 rounded-full transition ${mode === AppMode.NOTEBOOK ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400 hover:bg-slate-100'}`}
+              title="Notebook"
             >
-              <Book size={24} />
+              <Book size={20} />
             </button>
             <button 
               onClick={() => setMode(AppMode.FLASHCARDS)}
               className={`p-2 rounded-full transition ${mode === AppMode.FLASHCARDS ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400 hover:bg-slate-100'}`}
+              title="Flashcards"
             >
-              <Layers size={24} />
+              <Layers size={20} />
             </button>
           </div>
         </div>
@@ -130,7 +159,7 @@ const App: React.FC = () => {
                   type="text" 
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder={`Type a word in ${targetLang.name} or ${nativeLang.name}...`}
+                  placeholder={`Translate to ${targetLang.name}...`}
                   className="w-full bg-white border-2 border-slate-200 rounded-2xl p-5 pl-6 pr-16 text-xl shadow-lg focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all placeholder:text-slate-300"
                  />
                  <button 
@@ -156,8 +185,8 @@ const App: React.FC = () => {
                    result={currentResult} 
                    isSaved={savedItems.some(i => i.word === currentResult.word)}
                    onSave={saveItem}
-                   nativeLangName={nativeLang.name}
-                   targetLangName={targetLang.name}
+                   nativeLangName={currentResult.sourceLang || nativeLang.name}
+                   targetLangName={currentResult.targetLang || targetLang.name}
                  />
               </div>
             )}

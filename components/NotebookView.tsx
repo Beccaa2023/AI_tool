@@ -69,7 +69,7 @@ const NotebookView: React.FC<Props> = ({ items, nativeLangName, onDelete, onRevi
 
       <div className="grid gap-4">
         {items.map(item => (
-          <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition">
+          <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition cursor-pointer" onClick={() => onReview(item)}>
              <div className="w-16 h-16 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
                {item.imageUrl ? (
                  <img src={item.imageUrl} alt={item.word} className="w-full h-full object-cover" />
@@ -78,8 +78,13 @@ const NotebookView: React.FC<Props> = ({ items, nativeLangName, onDelete, onRevi
                )}
              </div>
              
-             <div className="flex-1 min-w-0" onClick={() => onReview(item)}>
-                <h3 className="font-bold text-lg text-slate-900 truncate">{item.word}</h3>
+             <div className="flex-1 min-w-0">
+                <div className="flex justify-between">
+                  <h3 className="font-bold text-lg text-slate-900 truncate">{item.word}</h3>
+                  <span className="text-xs font-bold text-slate-300 bg-slate-50 px-2 py-1 rounded">
+                    {item.targetLang ? item.targetLang.slice(0, 2).toUpperCase() : ''}
+                  </span>
+                </div>
                 <p className="text-sm text-slate-500 truncate">{item.explanation}</p>
              </div>
 

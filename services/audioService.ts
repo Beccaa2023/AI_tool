@@ -3,10 +3,10 @@ let audioContext: AudioContext | null = null;
 
 export const getAudioContext = (): AudioContext => {
   if (!audioContext) {
-    // Gemini TTS usually outputs 24kHz
-    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
-      sampleRate: 24000,
-    });
+    // Do not force sampleRate in the constructor. Let the browser/OS decide (usually 44.1kHz or 48kHz).
+    // Forcing it can cause silence or failure on some devices.
+    // We will define the sample rate (24000) when creating the buffer, and Web Audio handles resampling.
+    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
   }
   return audioContext;
 };
@@ -26,10 +26,10 @@ const decodeBase64 = (base64: string): Uint8Array => {
 const pcmToAudioBuffer = (
   pcmData: Uint8Array, 
   ctx: AudioContext, 
-  sampleRate: number = 24000
+  sampleRate: number = 24000 // Gemini TTS default
 ): AudioBuffer => {
-  // Convert Uint8Array to Int16Array (Raw PCM is usually 16-bit little-endian)
-  const int16Array = new Int16Array(pcmData.buffer);
+  // Ensure we are reading 16-bit integers correctly
+  const int16Array = new Int16Array(pcmData.buffer, pcmData.byteOffset, pcmData.byteLength / 2);
   
   const frameCount = int16Array.length;
   const audioBuffer = ctx.createBuffer(1, frameCount, sampleRate);
@@ -47,21 +47,21 @@ export const playAudioData = async (base64Audio: string) => {
   try {
     const ctx = getAudioContext();
     
-    // Resume context if suspended (browser policy)
+    // Always check state and resume if needed (browser autoplay policy)
     if (ctx.state === 'suspended') {
       await ctx.resume();
     }
 
     const rawBytes = decodeBase64(base64Audio);
     
-    // Gemini API returns raw PCM data, not a WAV/MP3 file with headers.
-    // We must manually convert the raw PCM bytes into an AudioBuffer.
+    // Gemini API returns raw PCM data.
+    // We create a buffer at 24kHz. The context (running at 44.1/48k) will automatically resample it during playback.
     const audioBuffer = pcmToAudioBuffer(rawBytes, ctx, 24000);
 
     const source = ctx.createBufferSource();
     source.buffer = audioBuffer;
     source.connect(ctx.destination);
-    source.start(0);
+    source.start(0); // Start immediately
   } catch (error) {
     console.error("Failed to play audio", error);
   }

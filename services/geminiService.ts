@@ -8,12 +8,13 @@ export const lookupWord = async (
   text: string,
   sourceLang: string,
   targetLang: string
-): Promise<Omit<DictionaryResult, 'imageUrl' | 'timestamp'>> => {
+): Promise<Omit<DictionaryResult, 'imageUrl' | 'timestamp' | 'sourceLang' | 'targetLang'>> => {
   const ai = getClient();
   
   // Specific instruction for European Portuguese
-  const langInstruction = targetLang.includes('Portuguese') 
-    ? "The target language is strictly **European Portuguese (Português de Portugal)**. Use European grammar (e.g., use 'tu' for informal, 'vós' if applicable but focus on 'você' behavior in PT-PT vs BR, prefer 'estou a fazer' over 'estou fazendo', etc) and vocabulary."
+  const isPortuguese = targetLang.toLowerCase().includes('portuguese');
+  const langInstruction = isPortuguese
+    ? "The target language is strictly **European Portuguese (Português de Portugal/pt-PT)**. Do NOT use Brazilian Portuguese terms or grammar. Use 'tu' for the second person singular informal. Use 'estou a fazer' construction instead of gerund 'estou fazendo'. Use 'autocarro', 'comboio', 'ecrã' instead of 'ônibus', 'trem', 'tela'."
     : `The target language is "${targetLang}".`;
 
   const prompt = `
@@ -51,6 +52,7 @@ export const lookupWord = async (
           friendlyNote: { type: Type.STRING },
           conjugations: {
             type: Type.OBJECT,
+            nullable: true,
             description: "Only populate if the word is a verb",
             properties: {
               infinitive: { type: Type.STRING },
@@ -82,7 +84,7 @@ export const generateConceptImage = async (word: string): Promise<string | undef
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
-      contents: `Create a simple, fun, vibrant, minimalist vector-style illustration representing the concept: "${word}". Bright colors, clean lines.`,
+      contents: `Create a simple, fun, vibrant, minimalist vector-style illustration representing the concept: "${word}". Bright colors, clean lines, flat design, white background.`,
       config: {
         // No responseSchema for image models
       }
@@ -111,7 +113,7 @@ export const generateSpeech = async (text: string): Promise<string | null> => {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
           voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Puck' }, // Puck is usually energetic
+            prebuiltVoiceConfig: { voiceName: 'Puck' }, // Puck is energetic
           },
         },
       },

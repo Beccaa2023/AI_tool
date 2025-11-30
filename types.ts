@@ -9,10 +9,15 @@ export interface ExampleSentence {
   translated: string;
 }
 
+export interface ConjugationForm {
+  pronoun: string;
+  form: string;
+}
+
 export interface Conjugation {
   infinitive: string;
   tenseName: string; // e.g., "Present Indicative"
-  forms: { pronoun: string; form: string }[];
+  forms: ConjugationForm[];
 }
 
 export interface DictionaryResult {
@@ -23,6 +28,8 @@ export interface DictionaryResult {
   conjugations?: Conjugation; // Optional field for verbs
   imageUrl?: string; // Base64 or URL
   timestamp: number;
+  sourceLang: string; // The user's native language for this result
+  targetLang: string; // The target language for this result
 }
 
 export interface SavedItem extends DictionaryResult {
