@@ -14,3 +14,13 @@ export const LANGUAGES: Language[] = [
 ];
 
 export const MOCK_IMAGE = "https://picsum.photos/400/400";
+
+export const AI_MODELS = [
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Fast & Efficient)' },
+  { id: 'gemini-3-pro-preview', name: 'Gemini 3.0 Pro (Smarter & Complex)' },
+];
+
+export const DEFAULT_SETTINGS = {
+  apiKey: '',
+  textModel: 'gemini-2.5-flash',
+};

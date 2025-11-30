@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { LANGUAGES } from './constants';
-import { Language, AppMode, DictionaryResult, SavedItem } from './types';
+import { LANGUAGES, AI_MODELS, DEFAULT_SETTINGS } from './constants';
+import { Language, AppMode, DictionaryResult, SavedItem, AppSettings } from './types';
 import WelcomeScreen from './components/WelcomeScreen';
 import ResultCard from './components/ResultCard';
 import NotebookView from './components/NotebookView';
 import FlashcardMode from './components/FlashcardMode';
 import { lookupWord, generateConceptImage } from './services/geminiService';
-import { Search, Book, Layers, ArrowLeft, Loader2, Settings2 } from 'lucide-react';
+import { Search, Book, Layers, ArrowLeft, Loader2, Settings, X, Save } from 'lucide-react';
 
 const App: React.FC = () => {
   const [hasStarted, setHasStarted] = useState(false);
@@ -17,7 +17,14 @@ const App: React.FC = () => {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [currentResult, setCurrentResult] = useState<DictionaryResult | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   
+  // Settings State
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    const saved = localStorage.getItem('lingopop_settings');
+    return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+  });
+
   const [savedItems, setSavedItems] = useState<SavedItem[]>(() => {
     const saved = localStorage.getItem('lingopop_saved');
     return saved ? JSON.parse(saved) : [];
@@ -53,9 +60,14 @@ const App: React.FC = () => {
         sourceLang: reqNative,
         targetLang: reqTarget
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Search failed", error);
-      alert("Oops! The AI got a bit confused. Try again?");
+      let errorMsg = "Oops! The AI got a bit confused. Try again?";
+      if (error.message?.includes("API Key")) {
+        errorMsg = "API Key Error: Please check your settings.";
+        setShowSettings(true);
+      }
+      alert(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -74,6 +86,14 @@ const App: React.FC = () => {
   const reviewItem = (item: SavedItem) => {
     setCurrentResult(item);
     setMode(AppMode.SEARCH);
+  };
+
+  const saveSettings = () => {
+    localStorage.setItem('lingopop_settings', JSON.stringify(settings));
+    setShowSettings(false);
+    // Reload page to ensure service picks up new env? 
+    // Actually our service reads from localStorage on every call, so no reload needed.
+    alert("Settings saved!");
   };
 
   if (!hasStarted) {
@@ -141,6 +161,13 @@ const App: React.FC = () => {
               title="Flashcards"
             >
               <Layers size={20} />
+            </button>
+            <button 
+              onClick={() => setShowSettings(true)}
+              className="p-2 rounded-full text-slate-400 hover:bg-slate-100 transition"
+              title="Settings"
+            >
+              <Settings size={20} />
             </button>
           </div>
         </div>
@@ -226,6 +253,61 @@ const App: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 animate-slide-up">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-slate-900 display-font">Settings</h2>
+              <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Google Gemini API Key</label>
+                <input 
+                  type="password" 
+                  value={settings.apiKey}
+                  onChange={(e) => setSettings({...settings, apiKey: e.target.value})}
+                  placeholder="Paste your API key here..."
+                  className="w-full bg-slate-100 border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="text-xs text-slate-400 mt-1">
+                  Leave empty to use the default key (if configured). 
+                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline ml-1">Get a key</a>
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">AI Model (Text)</label>
+                <select 
+                  value={settings.textModel}
+                  onChange={(e) => setSettings({...settings, textModel: e.target.value})}
+                  className="w-full bg-slate-100 border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {AI_MODELS.map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-400 mt-1">Select 'Gemini 3.0 Pro' for more complex reasoning.</p>
+              </div>
+
+              <div className="pt-4">
+                <button 
+                  onClick={saveSettings}
+                  className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition shadow-lg shadow-indigo-200"
+                >
+                  <Save size={20} />
+                  Save Settings
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

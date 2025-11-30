@@ -41,6 +41,11 @@ export interface ChatMessage {
   text: string;
 }
 
+export interface AppSettings {
+  apiKey: string;
+  textModel: string;
+}
+
 export enum AppMode {
   SEARCH = 'SEARCH',
   NOTEBOOK = 'NOTEBOOK',

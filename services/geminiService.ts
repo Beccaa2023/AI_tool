@@ -1,7 +1,26 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { DictionaryResult, SavedItem } from "../types";
+import { DEFAULT_SETTINGS } from "../constants";
 
-const getClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Helper to get configuration
+const getConfig = () => {
+  const saved = localStorage.getItem('lingopop_settings');
+  const settings = saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+  
+  // Priority: User Settings > Environment Variable
+  const apiKey = settings.apiKey || process.env.API_KEY;
+  const textModel = settings.textModel || 'gemini-2.5-flash';
+  
+  return { apiKey, textModel };
+};
+
+const getClient = () => {
+  const { apiKey } = getConfig();
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please configure it in settings.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 // 1. Dictionary Lookup
 export const lookupWord = async (
@@ -10,6 +29,7 @@ export const lookupWord = async (
   targetLang: string
 ): Promise<Omit<DictionaryResult, 'imageUrl' | 'timestamp' | 'sourceLang' | 'targetLang'>> => {
   const ai = getClient();
+  const { textModel } = getConfig();
   
   // Specific instruction for European Portuguese
   const isPortuguese = targetLang.toLowerCase().includes('portuguese');
@@ -30,7 +50,7 @@ export const lookupWord = async (
   `;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: textModel,
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -81,9 +101,12 @@ export const lookupWord = async (
 // 2. Image Generation
 export const generateConceptImage = async (word: string): Promise<string | undefined> => {
   const ai = getClient();
+  // We strictly use the specialized image model, user selection applies to text logic
+  const imageModel = 'gemini-2.5-flash-image'; 
+  
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
+      model: imageModel,
       contents: `Create a simple, fun, vibrant, minimalist vector-style illustration representing the concept: "${word}". Bright colors, clean lines, flat design, white background.`,
       config: {
         // No responseSchema for image models
@@ -105,9 +128,12 @@ export const generateConceptImage = async (word: string): Promise<string | undef
 // 3. Text to Speech
 export const generateSpeech = async (text: string): Promise<string | null> => {
   const ai = getClient();
+  // We strictly use the specialized TTS model
+  const ttsModel = "gemini-2.5-flash-preview-tts";
+
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
+      model: ttsModel,
       contents: [{ parts: [{ text }] }],
       config: {
         responseModalities: [Modality.AUDIO],
@@ -130,6 +156,8 @@ export const generateSpeech = async (text: string): Promise<string | null> => {
 // 4. Story Weaving
 export const weaveStory = async (items: SavedItem[], nativeLang: string): Promise<string> => {
   const ai = getClient();
+  const { textModel } = getConfig();
+
   const words = items.map(i => i.word).join(", ");
   
   const prompt = `
@@ -139,7 +167,7 @@ export const weaveStory = async (items: SavedItem[], nativeLang: string): Promis
   `;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: textModel,
     contents: prompt,
   });
 
@@ -155,8 +183,10 @@ export const getChatResponse = async (
   nativeLang: string
 ) => {
   const ai = getClient();
+  const { textModel } = getConfig();
+
   const chat = ai.chats.create({
-    model: 'gemini-2.5-flash',
+    model: textModel,
     history: [
       {
         role: 'user',
